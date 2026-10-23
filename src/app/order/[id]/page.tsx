@@ -1,0 +1,110 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
+export default function OrderPage() {
+  const params = useParams();
+
+  const orderId = params.id as string;
+
+  const [status, setStatus] = useState("جاري التحميل...");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadOrder = async () => {
+      try {
+        const querySnapshot = await getDocs(
+          collection(db, "orders")
+        );
+
+        let found = false;
+
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+
+          if (data.orderNumber == orderId) {
+            setStatus(data.status);
+            found = true;
+          }
+        });
+
+        if (!found) {
+          setStatus("تم التسليم");
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    if (orderId) {
+      loadOrder();
+
+      const interval = setInterval(() => {
+        loadOrder();
+      }, 2000);
+
+      return () => clearInterval(interval);
+    }
+  }, [orderId]);
+
+  const getColor = () => {
+    if (status === "جاهز للاستلام") {
+      return "bg-green-500";
+    }
+
+    if (status === "تم التسليم") {
+      return "bg-blue-500";
+    }
+
+    return "bg-yellow-500";
+  };
+
+  return (
+    <main className="min-h-screen bg-slate-100 flex items-center justify-center p-5">
+
+      <div className="bg-white rounded-3xl shadow-xl p-10 text-center w-full max-w-md">
+
+        <h1 className="text-4xl font-bold text-slate-800">
+          Nedaa Orders
+        </h1>
+
+        <p className="text-slate-500 mt-3">
+          تتبع حالة الطلب
+        </p>
+
+        <h2 className="text-6xl font-bold mt-10">
+          #{orderId}
+        </h2>
+
+        <div className="mt-10">
+
+          <div
+            className={`w-28 h-28 rounded-full mx-auto ${getColor()}`}
+          ></div>
+
+          <div className="mt-6">
+
+            {loading ? (
+              <p>جاري التحميل...</p>
+            ) : (
+              <span
+                className={`inline-block px-8 py-3 rounded-xl text-white text-lg ${getColor()}`}
+              >
+                {status}
+              </span>
+            )}
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  );
+}
