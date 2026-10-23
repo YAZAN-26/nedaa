@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -12,6 +12,8 @@ export default function OrderPage() {
 
   const [status, setStatus] = useState("جاري التحميل...");
   const [loading, setLoading] = useState(true);
+
+  const previousStatus = useRef("");
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -26,8 +28,22 @@ export default function OrderPage() {
           const data = doc.data();
 
           if (data.orderNumber == orderId) {
-            setStatus(data.status);
             found = true;
+
+            if (
+              previousStatus.current !== "جاهز للاستلام" &&
+              data.status === "جاهز للاستلام"
+            ) {
+              const audio = new Audio(
+                "https://actions.google.com/sounds/v1/alarms/beep_short.ogg"
+              );
+
+              audio.play().catch(() => {});
+            }
+
+            previousStatus.current = data.status;
+
+            setStatus(data.status);
           }
         });
 
@@ -64,6 +80,18 @@ export default function OrderPage() {
     return "bg-yellow-500";
   };
 
+  const getText = () => {
+    if (status === "جاهز للاستلام") {
+      return "طلبك جاهز للاستلام";
+    }
+
+    if (status === "تم التسليم") {
+      return "تم تسليم الطلب";
+    }
+
+    return "يتم تحضير طلبك";
+  };
+
   return (
     <main className="min-h-screen bg-slate-100 flex items-center justify-center p-5">
 
@@ -92,11 +120,17 @@ export default function OrderPage() {
             {loading ? (
               <p>جاري التحميل...</p>
             ) : (
-              <span
-                className={`inline-block px-8 py-3 rounded-xl text-white text-lg ${getColor()}`}
-              >
-                {status}
-              </span>
+              <>
+                <span
+                  className={`inline-block px-8 py-3 rounded-xl text-white text-lg ${getColor()}`}
+                >
+                  {status}
+                </span>
+
+                <p className="mt-4 text-slate-600">
+                  {getText()}
+                </p>
+              </>
             )}
 
           </div>

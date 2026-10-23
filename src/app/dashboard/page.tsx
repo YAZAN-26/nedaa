@@ -3,17 +3,29 @@
 import { useState } from "react";
 import QRCode from "react-qr-code";
 import { collection, addDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { auth, db } from "@/lib/firebase";
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   const [orderNumber, setOrderNumber] = useState("");
   const [showQR, setShowQR] = useState(false);
 
   const createOrder = async () => {
     if (!orderNumber) return;
 
+    const user = auth.currentUser;
+
+    if (!user) {
+      alert("يجب تسجيل الدخول أولاً");
+      return;
+    }
+
     try {
       await addDoc(collection(db, "orders"), {
+        restaurantId: user.uid,
         orderNumber,
         status: "يتم التحضير",
         createdAt: new Date(),
@@ -24,6 +36,11 @@ export default function DashboardPage() {
       console.error(error);
       alert("حدث خطأ أثناء إنشاء الطلب");
     }
+  };
+
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.push("/login");
   };
 
   if (showQR) {
@@ -59,10 +76,23 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 flex items-center justify-center">
+
       <div className="bg-white w-full max-w-md p-10 rounded-3xl shadow-xl">
-        <h1 className="text-4xl font-bold text-center text-slate-800">
-          Nedaa Orders
-        </h1>
+
+        <div className="flex justify-between items-center mb-6">
+
+          <h1 className="text-3xl font-bold text-slate-800">
+            Nedaa Orders
+          </h1>
+
+          <button
+            onClick={handleLogout}
+            className="bg-red-500 text-white px-4 py-2 rounded-xl"
+          >
+            خروج
+          </button>
+
+        </div>
 
         <p className="text-center text-slate-500 mt-3">
           إنشاء طلب جديد
@@ -82,7 +112,9 @@ export default function DashboardPage() {
         >
           إنشاء الطلب
         </button>
+
       </div>
+
     </main>
   );
 }
